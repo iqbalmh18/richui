@@ -4,7 +4,7 @@
 
 Rich UI is a Python module that allows you to build interactive command-line interfaces with a modern, colorful, and fully customizable appearance. It leverages the power of [Rich](https://github.com/Textualize/rich) to provide features such as syntax-highlighted code displays, interactive tree and table views, input prompts with completion, and selection menus.
 
-![example](https://asciinema.org/a/709406)
+[![asciicast](https://asciinema.org/a/709406.svg)](https://asciinema.org/a/709406)
 
 ## Table of Contents
 
