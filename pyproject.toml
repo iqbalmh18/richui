@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "richui"
-version = "0.0.2"
+version = "1.0.0"
 description = "An interactive command-line UI module built on top of Rich for customizable UI components."
 authors = [
     { name = "Moh Iqbal Hidayat", email = "iqbalmh18.dev@gmail.com" }
