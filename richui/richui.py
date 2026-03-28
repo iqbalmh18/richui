@@ -31,7 +31,7 @@ class Richui:
         newline: Optional[bool] = False,
         **kwargs: Any,
     ) -> None:
-        tree = self.renderer.__tree__(
+        tree = self.renderer.render_tree(
             text, text_wrap, text_width, title, title_style, key_style,
             value_style, guide_style, padding, **kwargs
         )
@@ -59,7 +59,7 @@ class Richui:
         show_header: Optional[bool] = False,
         **kwargs: Any,
     ) -> None:
-        table = self.renderer.__table__(
+        table = self.renderer.render_table(
             text, text_wrap, text_style, text_width, text_ljust,
             title, title_style, title_justify, box, expand, padding,
             show_header, **kwargs
@@ -99,7 +99,7 @@ class Richui:
                 self.console.show_cursor(False)
                 while True:
                     completion_padding: Tuple[int, int] = (0, len(prompt)) if prompt and len(prompt) < 30 else (0, 0)
-                    display = self.renderer.__display__(
+                    display = self.renderer.render_display(
                         prompt,
                         prompt_style,
                         cursor,
@@ -124,7 +124,7 @@ class Richui:
                         continue
                     
                     if completion_start and completion_input:
-                        if keys in ('\x1b[A', '\x1bOA', '[A'):
+                        if keys in ('\x1b[A', '\x1bOA', '[A', '\x1b[Z'):
                             completion_index = (completion_index - 1) % len(completion_input)
                             continue
                         elif keys in ('\x1b[B', '\x1bOB', '[B', '\t'):
@@ -176,30 +176,11 @@ class Richui:
             finally:
                 self.console.show_cursor(True)
     
-        display = self.renderer.__display__(
-            prompt,
-            prompt_style,
-            '',
-            cursor_style,
-            footer,
-            footer_style,
-            secure,
-            user_input,
-            line_input,
-            0,
-            None,
-            False,
-            (0, len(prompt)) if prompt else (0, 0),
-        )
-        with self.console.capture() as capture:
-            self.console.print(display)
-        line = capture.get().count('\n')
-        self.renderer.__line__(line)
         return ''.join(user_input + line_input).strip()
     
     def select(
         self,
-        option: List[str],
+        options: List[str],
         option_show: Optional[bool] = False,
         option_style: Optional[str] = None,
         prompt: Optional[str] = None,
@@ -217,9 +198,9 @@ class Richui:
         return_index: Optional[bool] = False,
         **kwargs: Any,
     ) -> Union[int, List[str], List[int]]:
-        selected: List[bool] = [False] * len(option)
-        result = self.renderer.__select__(
-            option,
+        selected: List[bool] = [False] * len(options)
+        result = self.renderer.render_select(
+            options,
             option_show,
             option_style,
             prompt,
@@ -247,9 +228,9 @@ class Richui:
             if return_index:
                 return [i for i, s in enumerate(selected) if s]
             else:
-                return [self.inputer.get_text(option[i]) for i, s in enumerate(selected) if s]
+                return [self.inputer.get_text(options[i]) for i, s in enumerate(selected) if s]
         else:
-            return index if return_index else self.inputer.get_text(option[index])
+            return index if return_index else self.inputer.get_text(options[index])
     
     def confirm(
         self,
@@ -264,10 +245,10 @@ class Richui:
         footer_style: Optional[str] = None,
         **kwargs: Any,
     ) -> bool:
-        option: List[str] = [yes_text, no_text]
-        select_: List[bool] = [False] * len(option)
-        result = self.renderer.__select__(
-            option=option,
+        options: List[str] = [yes_text, no_text]
+        select_: List[bool] = [False] * len(options)
+        result = self.renderer.render_select(
+            options=options,
             prompt=prompt,
             prompt_style=prompt_style,
             footer=footer,

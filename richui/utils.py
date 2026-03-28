@@ -61,19 +61,13 @@ class Renderer:
         self.config: Config = config or Config()
         self.console: Console = console or Console()
     
-    def __line__(self, line: int) -> None:
-        sys.stdout.write(f'\x1b[{line}F')
-        for _ in range(line):
-            sys.stdout.write('\x1b[2K')
-        sys.stdout.write('\n')
-        sys.stdout.write('\x1b[0G')
-        sys.stdout.flush()
+
     
-    def __wrap__(self, text: str, width: int) -> str:
+    def wrap_text(self, text: str, width: int) -> str:
         text = re.sub(r'\s+', ' ', text.replace('\n', ' ')).strip()
         return textwrap.fill(text, width)
     
-    def __tree__(
+    def render_tree(
         self,
         text: Union[Dict[Any, Any], Dict[str, Any]],
         text_wrap: Optional[bool] = False,
@@ -106,7 +100,7 @@ class Renderer:
                     if isinstance(value, list):
                         for v in value:
                             if text_wrap:
-                                v = self.__wrap__(str(v), text_width or self.config.text_width)
+                                v = self.wrap_text(str(v), text_width or self.config.text_width)
                             v = f'[{value_style or self.config.value_style}]{str(v)}[/]'
                             branch.add(v)
                     else:
@@ -117,7 +111,7 @@ class Renderer:
             tree = Padding(tree, padding or self.config.padding)
         return tree
     
-    def __table__(
+    def render_table(
         self,
         text: Union[str, Dict[str, Any], Dict[str, int]],
         text_wrap: Optional[bool] = False,
@@ -148,20 +142,20 @@ class Renderer:
             table.add_row()
         if isinstance(text, str):
             if text_wrap:
-                table.add_row(self.__wrap__(text, text_width or self.config.text_width))
+                table.add_row(self.wrap_text(text, text_width or self.config.text_width))
             else:
                 table.add_row(text)
         else:
             for key, value in text.items():
                 if text_wrap:
-                    table.add_row(key.ljust(text_ljust or self.config.text_ljust), self.__wrap__(str(value) or '', text_width or self.config.text_width))
+                    table.add_row(key.ljust(text_ljust or self.config.text_ljust), self.wrap_text(str(value) or '', text_width or self.config.text_width))
                 else:
                     table.add_row(key.ljust(text_ljust or self.config.text_ljust), str(value) or '')
         if padding or self.config.padding:
             table = Padding(table, padding or self.config.padding)
         return table
     
-    def __comptab__(
+    def render_completion_table(
         self,
         completion_index: int,
         completion_input: Union[List[Any], List[Tuple[Any, Any]]],
@@ -198,7 +192,7 @@ class Renderer:
         table = Padding(table, completion_padding)
         return table
     
-    def __display__(
+    def render_display(
         self,
         prompt: Union[str],
         prompt_style: Optional[str] = None,
@@ -234,13 +228,13 @@ class Renderer:
             main_input.append(Text.from_markup(f" [{footer_style or self.config.footer_style}]{footer}[/]"))
         display: List[Any] = [main_input]
         if completion_start and completion_input:
-            table: Table = self.__comptab__(completion_index, completion_input, completion_padding, completion_style, completion_second_style, completion_select_style)
+            table: Table = self.render_completion_table(completion_index, completion_input, completion_padding, completion_style, completion_second_style, completion_select_style)
             display.append(table)
         return Group(*display)
     
-    def __select__(
+    def render_select(
         self,
-        option: List[str],
+        options: List[str],
         option_show: Optional[bool] = False,
         option_style: Optional[str] = None,
         prompt: Optional[str] = None,
@@ -259,20 +253,20 @@ class Renderer:
         **kwargs: Any,
     ) -> Tuple[int, List[bool]]:
         if selected is None:
-            selected = [False] * len(option)
+            selected = [False] * len(options)
     
         index: int = cursor_index if cursor_index is not None else 0
-        total: int = len(option)
+        total: int = len(options)
     
         def selector(index: int) -> int:
             line: int = 0
             if prompt:
                 if option_show:
-                    print(Text.from_markup(f'{prompt} {option[index]}', style=prompt_style or self.config.prompt_style))
+                    print(Text.from_markup(f'{prompt} {options[index]}', style=prompt_style or self.config.prompt_style))
                 else:
                     print(Text.from_markup(prompt, style=prompt_style or self.config.prompt_style))
                 line += 1 + prompt.count('\n')
-            for i, o in enumerate(option):
+            for i, opt in enumerate(options):
                 t: Text = Text()
                 if i == index:
                     t.append((cursor + ' ') if cursor else (self.config.cursor + ' '), style=cursor_style or self.config.cursor_style)
@@ -290,9 +284,9 @@ class Renderer:
                     o_s: str = (self.config.selected_style if (i < len(selected) and selected[i]) else self.config.selection_style)
                 else:
                     o_s: str = (self.config.selected_style if (i < len(selected) and selected[i]) else (option_style or self.config.option_style))
-                t.append(Text.from_markup(o, style=o_s))
+                t.append(Text.from_markup(opt, style=o_s))
                 print(t)
-                line += 1 + o.count('\n')
+                line += 1 + opt.count('\n')
             if footer:
                 print()
                 print(Text.from_markup(footer, style=footer_style or self.config.footer_style))
@@ -306,11 +300,11 @@ class Renderer:
         try:
             while True:
                 key: str = Inputer().get_key()
-                if key in ('\x1b[A', 'OA', '[A'):
-                    index = max(0, index - 1)
-                elif key in ('\x1b[B', 'OB', '[B', '\t'):
-                    index = min(total - 1, index + 1)
-                elif key in ('\x1b[D', '\x1b[C', ' ') and multi_select:
+                if key in ('\x1b[A', '\x1bOA', '[A', '\x1b[Z'):
+                    index = (index - 1) % total
+                elif key in ('\x1b[B', '\x1bOB', '[B', '\t'):
+                    index = (index + 1) % total
+                elif key in ('\x1b[D', '\x1b[C', '\x1bOD', '\x1bOC', '[D', '[C', ' ') and multi_select:
                     selected[index] = not selected[index]
                 elif key == '\r':
                     break
